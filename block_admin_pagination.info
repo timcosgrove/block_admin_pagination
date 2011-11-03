@@ -1,0 +1,3 @@
+name = Block Admin Pagination
+description = Removes display of disabled blocks from core block admin and places them in their own paginated list
+core = 7.x

@@ -1,0 +1,67 @@
+<?php
+
+function block_admin_pagination_preprocess_block_admin_display_form(&$variables) {
+  $number_per_page = variable_get('block_admin_pager_number_per_page', 25);
+  // because this is an assoc. array we can't do a real slice. fake it.
+  $page = pager_default_initialize(count($variables['block_listing'][BLOCK_REGION_NONE]), $number_per_page);
+  $index = 0; // this is strictly for tracking where we are in the array, for the 'slice'
+  foreach ($variables['block_listing'][BLOCK_REGION_NONE] as $delta => $block) {
+    if (($index < ($page * $number_per_page)) || ($index > (($page * $number_per_page + $number_per_page) - 1))) {
+      unset ($variables['block_listing'][BLOCK_REGION_NONE][$delta]);
+    }
+    $index++;
+  }
+  $variables['form_submit'] = '<h4>See more Disabled blocks</h4>' . theme('pager', array('tags' => NULL)) . $variables['form_submit'];
+}
+
+/**
+ * Implements hook_menu().
+ */
+function block_admin_pagination_menu() {
+  $items['admin/config/user-interface/block-admin-pagination'] = array(
+    'title' => 'Block Admin Pagination',
+    'description' => 'Configure settings for Block admin pagination',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('block_admin_pagination_settings_form'),
+    'access arguments' => array('administer block admin pagination'),
+  );
+
+  return $items;
+}
+
+/**
+ * Implements hook_permission().
+ */
+function block_admin_pagination_permission() {
+  return array(
+    'administer block admin pagination' =>  array(
+      'title' => t('Administer Block Admin Pagination'),
+      'description' => t('Configure settings for the Block Admin Pagination module.'),
+    ),
+  );
+}
+
+/**
+ * Settings form for Block Admin Pagination
+ */
+function block_admin_pagination_settings_form() {
+  $form = array();
+  $form['block_admin_pager_number_per_page'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Number of Disabled Blocks Per Page'),
+    '#description' => t('The number of disabled blocks you want to appear on a single block admin page. This should be no higher than 50.'),
+    '#default_value' => variable_get('block_admin_pager_number_per_page', 25),
+  );
+
+  $form['#validate'][] = 'block_admin_pagination_settings_form_validate';
+  return system_settings_form($form);
+}
+
+function block_admin_pagination_settings_form_validate($form, &$form_state) {
+  $value = $form_state['values']['block_admin_pager_number_per_page'];
+  if (!is_numeric($value) || ($value < 1) || ($value > 50)) {
+    form_set_error('block_admin_pager_number_per_page', t('The number of items per page must be an integer between 1 and 50.'));
+ }
+}
+
+
