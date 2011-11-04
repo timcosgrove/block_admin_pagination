@@ -1,4 +1,8 @@
 <?php
+/**
+ * @file
+ * block_admin_pagination.module
+ */
 
 function block_admin_pagination_preprocess_block_admin_pagination_display_form(&$variables) {
   // this is mostly ported over wholesale from block.admin.inc, with changes
@@ -25,7 +29,7 @@ function block_admin_pagination_preprocess_block_admin_pagination_display_form(&
     // Set special classes needed for table drag and drop.
     $block['region']['#attributes']['class'] = array('block-region-select', 'block-region-' . $region);
     $block['weight']['#attributes']['class'] = array('block-weight', 'block-weight-' . $region);
-    // if it's an enabled block, put it in now
+    // if the block is in an enabled region, render its form now
     if ($region != BLOCK_REGION_NONE) {
       $variables['block_listing'][$region][$i] = new stdClass();
       $variables['block_listing'][$region][$i]->row_class = !empty($block['#attributes']['class']) ? implode(' ', $block['#attributes']['class']) : '';
@@ -39,23 +43,32 @@ function block_admin_pagination_preprocess_block_admin_pagination_display_form(&
     }
     else {
       // if it's a disabled block, just store it for the time being
+      // we need the count
       $variables['block_listing'][$region][$i] = $block;
       unset($variables['form']['blocks'][$i]);
     }
   }
 
+  // set up the pager
   $number_per_page = variable_get('block_admin_pager_number_per_page', 25);
-  // because this is an assoc. array we can't do a real slice. fake it.
-  $page = pager_default_initialize(count($variables['block_listing'][BLOCK_REGION_NONE]), $number_per_page);
+  $total = count($variables['block_listing'][BLOCK_REGION_NONE]);
+  $page = pager_default_initialize($total, $number_per_page);
+
+  // label the disabled region more appropriately
+  $beginning = ($page * $number_per_page) + 1;
+  $end = ($page + 1) * $number_per_page;
+  $end = $end > $total ? $total : $end;
+  $variables['block_regions'][BLOCK_REGION_NONE] = t('Disabled (@beginning - @end of @total)', array('@beginning' => $beginning, '@end' => $end, '@total' => $total));
 
   $index = 0; // this is strictly for tracking where we are in the array, for the 'slice'
   foreach ($variables['block_listing'][BLOCK_REGION_NONE] as $delta => $block) {
+    // because this is an assoc. array we can't do a real slice. fake it.
     if (($index < ($page * $number_per_page)) || ($index > (($page * $number_per_page + $number_per_page) - 1))) {
       // it's outside our pager range; just toss it
       unset($variables['block_listing'][BLOCK_REGION_NONE][$delta]);
     }
     else {
-      // now do the processing on the disabled blocks that happened earlier
+      // now do the processing on the disabled blocks that happened earlier for the other regions
       $variables['block_listing'][BLOCK_REGION_NONE][$delta] = new stdClass();
       $variables['block_listing'][BLOCK_REGION_NONE][$delta]->row_class = !empty($block['#attributes']['class']) ? implode(' ', $block['#attributes']['class']) : '';
       $variables['block_listing'][BLOCK_REGION_NONE][$delta]->block_modified = !empty($block['#attributes']['class']) && in_array('block-modified', $block['#attributes']['class']);
